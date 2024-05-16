@@ -3,6 +3,13 @@ const router = new express.Router()
 const db = require('../db')
 const ExpressError = require('../expressError')
 
+var today = new Date();
+var dd = String(today.getDate()).padStart(2, '0');
+var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+var yyyy = today.getFullYear();
+
+today = mm + '/' + dd + '/' + yyyy;
+
 router.get('/', async function(req, res, next) {
     try{
         const results = await db.query(`SELECT id, comp_code FROM invoices`)
@@ -46,17 +53,39 @@ router.post('/',async function(req,res,next) {
 })
 
 router.patch('/:id', async function(req,res,next) {
+    // please enable the first version to run jest 
+
+    // try{
+    //     const results = await db.query(`UPDATE invoices SET amt=$1 WHERE id=$2 RETURNING *`, [req.body.amt,req.params.id])
+    //     if (results.rows.length === 0) {
+    //         throw new ExpressError('Invoice Not Found', 404)
+    //     }
+    //     return res.json({invoice:results.rows[0]})
+    // }catch(e){
+    //     return next(e)
+    // }
+
+
+    // further study: allow paying of invoices
     try{
-        const results = await db.query(`UPDATE invoices SET amt=$1 WHERE id=$2 RETURNING *`, [req.body.amt,req.params.id])
-        if (results.rows.length === 0) {
-            throw new ExpressError('Invoice Not Found', 404)
+        const results = await db.query(`SELECT * FROM INVOICES WHERE id=$1`,[req.params.id])
+        if(results.rows.length === 0) {
+            throw new ExpressError('Invoice Not Found',404)
         }
-        return res.json({invoice:results.rows[0]})
+        const inv = results.rows[0];
+       
+        if(inv.paid === false && req.body.paid === true){
+            // inv.paid_date = today;
+            const result = await db.query(`UPDATE invoices SET amt=$1, paid=$2, paid_date=$3 WHERE id=$4 RETURNING *`, [req.body.amt, req.body.paid, today, req.params.id]);
+            return res.json({invoice:result.rows[0]})
+        }else{
+            const result  = await db.query(`UPDATE invoices SET amt=$1, paid=$2 WHERE id=$3 RETURNING *`, [req.body.amt,req.body.paid,req.params.id]);
+            return res.json({invoice:result.rows[0]})
+        }
     }catch(e){
         return next(e)
     }
-
-    // Allow paying of invoices
+    
 })
 
 router.delete('/:id', async function(req,res,next) {

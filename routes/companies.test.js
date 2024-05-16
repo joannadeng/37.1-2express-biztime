@@ -34,6 +34,11 @@ describe("GET /:code",function() {
                 code: "apple", 
                 name: "Apple Computer",
                 description: 'Maker of OSX.',
+                industries:[
+                    "Accounting",
+			        "Human Resource",
+			        "Information Technology"
+		        ],
                 invoices:[expect.any(Number),expect.any(Number),expect.any(Number)]
             }      
         })
@@ -49,7 +54,7 @@ describe("GET /:code",function() {
 describe("POST /", function(){
     test("Add a company", async function(){
         const response = await request(app).post(`/companies`).send({
-            code:"google",
+            // code:"google",
             name:"Google",
             description:"Search engine"
         });
@@ -67,8 +72,8 @@ describe("POST /", function(){
 describe("PATCH /:code", function(){
     test("Update a company", async function(){
         const response = await request(app).put(`/companies/apple`).send({ 
-            name:"apple",
-            description:"Cool products!"
+            "name":"apple",
+            "description":"Cool products!"
         });
         expect(response.statusCode).toBe(200);
         expect(response.body).toEqual({

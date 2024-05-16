@@ -62,7 +62,8 @@ describe(`PATCH /:id`, function(){
         const response = await request(app).get(`/invoices`);
         const inv = response.body.invoices[0];
         const res = await request(app).patch(`/invoices/${inv.id}`).send({
-            amt:400
+            amt:400,
+            paid:false
         });
         expect(res.statusCode).toBe(200);
     })

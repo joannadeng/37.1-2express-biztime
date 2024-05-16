@@ -2,6 +2,8 @@ const express = require('express')
 const router = new express.Router()
 const db = require('../db')
 const ExpressError = require('../expressError')
+const slugify = require('slugify') 
+
 
 router.get('/', async function(req,res,next) {
     try{
@@ -13,61 +15,73 @@ router.get('/', async function(req,res,next) {
 })
 
 router.get('/:code',async function(req,res,next) {
-    try{
-        const comResults = await db.query(` SELECT * FROM companies WHERE code=$1`, [req.params.code])
-        if (comResults.rows.length === 0) {
-            throw new ExpressError('Company Not Found', 404)
-        }
-        const invResults = await db.query(`
-            SELECT id FROM invoices 
-            WHERE comp_code=$1`,[req.params.code])
-        const { code, name, description } = comResults.rows[0];
-        const company = { code, name, description };
-        company.invoices = invResults.rows.map(inv => inv.id);
-        return res.json({company:company})
-    }catch(e){
-        return next(e)
-    }
-
     // try{
-    //     const comResults = await db.query(`
-    //     SELECT c.code, c.name, c.description, i.industry
-    //     FROM companies AS c
-    //     LEFT JOIN companies_industries AS ci
-    //     ON c.code=ci.comp_code
-    //     LEFT JOIN industries AS i
-    //     ON ci.indy_code=i.code
-    //     WHERE c.code=$1`,[req.params.code]);
-
+    //     const comResults = await db.query(` SELECT * FROM companies WHERE code=$1`, [req.params.code])
+    //     if (comResults.rows.length === 0) {
+    //         throw new ExpressError('Company Not Found', 404)
+    //     }
     //     const invResults = await db.query(`
-    //     SELECT id FROM invoices 
-    //     WHERE comp_code=$1`,[req.params.code])
+    //         SELECT id FROM invoices 
+    //         WHERE comp_code=$1`,[req.params.code])
     //     const { code, name, description } = comResults.rows[0];
     //     const company = { code, name, description };
-    //     if(comResults.rows.length === 0){
-    //         throw new ExpressError("Company Not Found",404)
-    //     }
-    //     const invoices = invResults.rows;
-    //     company.industries = comResults.rows.map( r => r.industry);
-    //     company.invoices = invoices.map(inv => inv.id)
+    //     company.invoices = invResults.rows.map(inv => inv.id);
     //     return res.json({company:company})
-    //     return res.send(comResults)
     // }catch(e){
-    //     console.log(e)
     //     return next(e)
     // }
+
+    // further study
+    try{
+        const comResults = await db.query(`
+        SELECT c.code, c.name, c.description, i.industry
+        FROM companies AS c
+        LEFT JOIN companies_industries AS ci
+        ON c.code=ci.comp_code
+        LEFT JOIN industries AS i
+        ON ci.indy_code=i.icode
+        WHERE c.code=$1`,[req.params.code]);
+
+        if(comResults.rows.length === 0){
+            throw new ExpressError("Company Not Found",404)
+        }
+
+        const invResults = await db.query(`
+        SELECT id FROM invoices 
+        WHERE comp_code=$1`,[req.params.code])
+        const { code, name, description } = comResults.rows[0];
+        const company = { code, name, description };
+
+        const invoices = invResults.rows;
+        company.industries = comResults.rows.map( r => r.industry);
+        company.invoices = invoices.map(inv => inv.id)
+        return res.json({company:company})
+        
+    }catch(e){
+        console.log(e)
+        return next(e)
+    }
 })
 
 
 router.post('/',async function(req,res,next) {
     try{
-        const{code,name,description} = req.body;
-        if(!code || !name || !description) {
+        const{name,description} = req.body;
+        const code = slugify(name,{
+            replacement:'-',
+            lower:true,
+            trim:true,
+            remove: /[*+~.()'"!:@]/g
+        });
+
+        if( !name || !description) {
             throw new ExpressError('Missing required data', 400) 
         }
+       
         const results = await db.query(`INSERT INTO companies (code,name,description)  VALUES($1,$2,$3) RETURNING code,name,description`, [code,name,description])
         return res.status(201).json({company:results.rows[0]})
     }catch(e){
+        console.log(e)
         return next(e)
     }    
 })
